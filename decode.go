@@ -123,7 +123,7 @@ func readMetaData(r io.Reader) (MetaData, error) {
 			return meta, errors.New("Failed to read metadata header: " + err.Error())
 		}
 
-		header := &io.LimitedReader{R: r, N: n}
+		header := &io.LimitedReader{R: r, N: int64(n)}
 
 		switch kind {
 		case invalidBlockType:
@@ -155,14 +155,14 @@ func readMetaData(r io.Reader) (MetaData, error) {
 	return meta, nil
 }
 
-func readMetaDataHeader(r io.Reader) (last bool, kind blockType, n int64, err error) {
+func readMetaDataHeader(r io.Reader) (last bool, kind blockType, n int32, err error) {
 	const headerSize = 32 // bits
 	br := bit.NewReader(&io.LimitedReader{R: r, N: headerSize})
 	fs, err := br.ReadFields(1, 7, 24)
 	if err != nil {
 		return false, 0, 0, err
 	}
-	return fs[0] == 1, blockType(fs[1]), int64(fs[2]), nil
+	return fs[0] == 1, blockType(fs[1]), int32(fs[2]), nil
 }
 
 func readStreamInfo(r io.Reader) (*StreamInfo, error) {
@@ -233,7 +233,7 @@ func vorbisString(data []byte) (string, []byte) {
 // 	6 channels: front left, front right, front center, LFE, back/surround left, back/surround right
 // 	7 channels: front left, front right, front center, LFE, back center, side left, side right
 // 	8 channels: front left, front right, front center, LFE, back left, back right, side left, side right
-func (d *Decoder) Next() ([][]int64, error) {
+func (d *Decoder) Next() ([][]int32, error) {
 	defer func() { d.n++ }()
 
 	raw := bytes.NewBuffer(nil)
@@ -248,7 +248,7 @@ func (d *Decoder) Next() ([][]int64, error) {
 	debug("frame %d\n\t%+v\n", d.n, h)
 
 	br := bit.NewReader(tee)
-	data := make([][]int64, h.channelAssignment.nChannels())
+	data := make([][]int32, h.channelAssignment.nChannels())
 	for ch := range data {
 		debug("\tsubframe: %d\n", ch)
 		bps := h.bitsPerSample(ch)
@@ -259,22 +259,22 @@ func (d *Decoder) Next() ([][]int64, error) {
 
 		case kind == subFrameConstant:
 			debug("\t\t%s\n", kind)
-			var v uint64
-			if v, err = br.Read(bps); err != nil {
+			v, err := br.Read(bps)
+			if err != nil {
 				return nil, err
 			}
 			u := signExtend(v, bps)
-			data[ch] = make([]int64, h.blockSize)
+			data[ch] = make([]int32, h.blockSize)
 			for j := range data[ch] {
 				data[ch][j] = u
 			}
 
 		case kind == subFrameVerbatim:
 			debug("\t\t%s\n", kind)
-			data[ch] = make([]int64, h.blockSize)
-			var v uint64
+			data[ch] = make([]int32, h.blockSize)
 			for j := range data[ch] {
-				if v, err = br.Read(bps); err != nil {
+				v, err := br.Read(bps)
+				if err != nil {
 					return nil, err
 				}
 				data[ch][j] = signExtend(v, bps)
@@ -313,7 +313,7 @@ func (d *Decoder) Next() ([][]int64, error) {
 	return data, nil
 }
 
-func fixChannels(data [][]int64, assign channelAssignment) {
+func fixChannels(data [][]int32, assign channelAssignment) {
 	switch assign {
 	case leftSide:
 		for i, d0 := range data[0] {
@@ -609,14 +609,14 @@ func readSubFrameHeader(br *bit.Reader) (kind subFrameKind, order int, err error
 	return kind, order, nil
 }
 
-var fixedCoeffs = [...][]int64{
-	1: []int64{1},
-	2: []int64{2, -1},
-	3: []int64{3, -3, 1},
-	4: []int64{4, -6, 4, -1},
+var fixedCoeffs = [...][]int32{
+	1: {1},
+	2: {2, -1},
+	3: {3, -3, 1},
+	4: {4, -6, 4, -1},
 }
 
-func decodeFixedSubFrame(br *bit.Reader, sampleSize uint, blkSize int, predO int) ([]int64, error) {
+func decodeFixedSubFrame(br *bit.Reader, sampleSize uint, blkSize int, predO int) ([]int32, error) {
 	warm, err := readInts(br, predO, sampleSize)
 	if err != nil {
 		return nil, err
@@ -637,7 +637,7 @@ func decodeFixedSubFrame(br *bit.Reader, sampleSize uint, blkSize int, predO int
 	return predict(fixedCoeffs[predO], warm, residual, 0), nil
 }
 
-func decodeLPCSubFrame(br *bit.Reader, sampleSize uint, blkSize int, predO int) ([]int64, error) {
+func decodeLPCSubFrame(br *bit.Reader, sampleSize uint, blkSize int, predO int) ([]int32, error) {
 	warm, err := readInts(br, predO, sampleSize)
 	if err != nil {
 		return nil, err
@@ -659,7 +659,7 @@ func decodeLPCSubFrame(br *bit.Reader, sampleSize uint, blkSize int, predO int) 
 	if err != nil {
 		return nil, err
 	}
-	shift := signExtend(s, 5)
+	shift := int(signExtend(s, 5))
 	debug("\t\tshift (quantization level): %d\n", shift)
 	if shift < 0 {
 		panic("What does a negative shift mean‽")
@@ -681,8 +681,8 @@ func decodeLPCSubFrame(br *bit.Reader, sampleSize uint, blkSize int, predO int) 
 	return predict(coeffs, warm, residual, shift), nil
 }
 
-func readInts(br *bit.Reader, n int, bits uint) ([]int64, error) {
-	is := make([]int64, n)
+func readInts(br *bit.Reader, n int, bits uint) ([]int32, error) {
+	is := make([]int32, n)
 	for i := range is {
 		w, err := br.Read(bits)
 		if err != nil {
@@ -693,20 +693,20 @@ func readInts(br *bit.Reader, n int, bits uint) ([]int64, error) {
 	return is, nil
 }
 
-func predict(coeffs, warm, residual []int64, shift int64) []int64 {
-	data := make([]int64, len(warm)+len(residual))
+func predict(coeffs, warm, residual []int32, shift int) []int32 {
+	data := make([]int32, len(warm)+len(residual))
 	copy(data, warm)
 	for i := len(warm); i < len(data); i++ {
-		var sum int64
+		var sum int32
 		for j, c := range coeffs {
 			sum += c * data[i-j-1]
-			data[i] = residual[i-len(warm)] + (sum >> uint64(shift))
+			data[i] = residual[i-len(warm)] + (sum >> uint(shift))
 		}
 	}
 	return data
 }
 
-func decodeResiduals(br *bit.Reader, blkSize int, predO int) ([]int64, error) {
+func decodeResiduals(br *bit.Reader, blkSize int, predO int) ([]int32, error) {
 	var bits uint
 
 	switch method, err := br.Read(2); {
@@ -726,7 +726,7 @@ func decodeResiduals(br *bit.Reader, blkSize int, predO int) ([]int64, error) {
 	}
 	debug("\t\tpartition order: %d\n", partO)
 
-	var residue []int64
+	var residue []int32
 	for i := 0; i < 1<<partO; i++ {
 		M, err := br.Read(bits)
 		if err != nil {
@@ -755,15 +755,15 @@ func decodeResiduals(br *bit.Reader, blkSize int, predO int) ([]int64, error) {
 	return residue, nil
 }
 
-func signExtend(v uint64, bits uint) int64 {
+func signExtend(v uint64, bits uint) int32 {
 	if v&(1<<(bits-1)) != 0 {
-		return int64(v | (^uint64(0))<<bits)
+		return int32(v | (^uint64(0))<<bits)
 	}
-	return int64(v)
+	return int32(v)
 }
 
-func riceDecode(br *bit.Reader, n int, M uint) ([]int64, error) {
-	ns := make([]int64, n)
+func riceDecode(br *bit.Reader, n int, M uint) ([]int32, error) {
+	ns := make([]int32, n)
 	for i := 0; i < n; i++ {
 		var q uint64
 		for {
@@ -783,7 +783,7 @@ func riceDecode(br *bit.Reader, n int, M uint) ([]int64, error) {
 		}
 
 		u |= (q << M)
-		ns[i] = int64(u>>1) ^ -int64(u&1)
+		ns[i] = int32(u>>1) ^ -int32(u&1)
 	}
 	return ns, nil
 }
