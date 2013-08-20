@@ -79,7 +79,7 @@ func TestNewDecoderError(t *testing.T) {
 				0, 0, // max block size
 				0, 0, 0, // min frame size
 				0, 0, 0, // max frame size
-				0, 0, 0x04, 0x40, 0, 0, 0, 0, // rate 0, 2 channels, 4 bits/sample, 0 samples
+				0, 0, 0x04, 0x40, 0, 0, 0, 0, // rate 0, 2 channels, 8 bits/sample, 0 samples
 				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // MD5, obviously not the true value.
 			},
 			"Bad sample rate",
@@ -109,7 +109,7 @@ func TestReadFrameHeaderError(t *testing.T) {
 				0, 0, // max block size
 				0, 0, 0, // min frame size
 				0, 0, 0, // max frame size
-				0, 0, 0x14, 0x40, 0, 0, 0, 1, // rate 1, 2 channels, 4 bits/sample, 1 sample
+				0, 0, 0x14, 0x70, 0, 0, 0, 1, // rate 1, 2 channels, 8 bits/sample, 1 sample
 				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // MD5, obviously not the true value.
 
 				// Bad sync code.
@@ -128,7 +128,7 @@ func TestReadFrameHeaderError(t *testing.T) {
 				0, 0, // max block size
 				0, 0, 0, // min frame size
 				0, 0, 0, // max frame size
-				0, 0, 0x14, 0x40, 0, 0, 0, 1, // rate 1, 2 channels, 4 bits/sample, 1 sample
+				0, 0, 0x14, 0x70, 0, 0, 0, 1, // rate 1, 2 channels, 8 bits/sample, 1 sample
 				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // MD5, obviously not the true value.
 
 				// Sync code · 1 reserved · fixed blocking
@@ -162,7 +162,7 @@ func TestReadFrameHeaderError(t *testing.T) {
 				0, 0, // max block size
 				0, 0, 0, // min frame size
 				0, 0, 0, // max frame size
-				0, 0, 0x14, 0x40, 0, 0, 0, 1, // rate 1, 2 channels, 4 bits/sample, 1 sample
+				0, 0, 0x14, 0x70, 0, 0, 0, 1, // rate 1, 2 channels, 8 bits/sample, 1 sample
 				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // MD5, obviously not the true value.
 
 				// Sync code · 0 reserved · fixed blocking
@@ -196,7 +196,7 @@ func TestReadFrameHeaderError(t *testing.T) {
 				0, 0, // max block size
 				0, 0, 0, // min frame size
 				0, 0, 0, // max frame size
-				0, 0, 0x14, 0x40, 0, 0, 0, 1, // rate 1, 2 channels, 4 bits/sample, 1 sample
+				0, 0, 0x14, 0x70, 0, 0, 0, 1, // rate 1, 2 channels, 8 bits/sample, 1 sample
 				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // MD5, obviously not the true value.
 
 				// Sync code · 0 reserved · fixed blocking
@@ -230,7 +230,7 @@ func TestReadFrameHeaderError(t *testing.T) {
 				0, 0, // max block size
 				0, 0, 0, // min frame size
 				0, 0, 0, // max frame size
-				0, 0, 0x14, 0x40, 0, 0, 0, 1, // rate 1, 2 channels, 4 bits/sample, 1 sample
+				0, 0, 0x14, 0x70, 0, 0, 0, 1, // rate 1, 2 channels, 8 bits/sample, 1 sample
 				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // MD5, obviously not the true value.
 
 				// Sync code · 0 reserved · fixed blocking
@@ -264,7 +264,7 @@ func TestReadFrameHeaderError(t *testing.T) {
 				0, 0, // max block size
 				0, 0, 0, // min frame size
 				0, 0, 0, // max frame size
-				0, 0, 0x14, 0x40, 0, 0, 0, 1, // rate 1, 2 channels, 4 bits/sample, 1 sample
+				0, 0, 0x14, 0x70, 0, 0, 0, 1, // rate 1, 2 channels, 8 bits/sample, 1 sample
 				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // MD5, obviously not the true value.
 
 				// Sync code · 0 reserved · fixed blocking
@@ -298,7 +298,7 @@ func TestReadFrameHeaderError(t *testing.T) {
 				0, 0, // max block size
 				0, 0, 0, // min frame size
 				0, 0, 0, // max frame size
-				0, 0, 0x14, 0x40, 0, 0, 0, 1, // rate 1, 2 channels, 4 bits/sample, 1 sample
+				0, 0, 0x14, 0x70, 0, 0, 0, 1, // rate 1, 2 channels, 8 bits/sample, 1 sample
 				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // MD5, obviously not the true value.
 
 				// Sync code · 0 reserved · fixed blocking
@@ -332,7 +332,7 @@ func TestReadFrameHeaderError(t *testing.T) {
 				0, 0, // max block size
 				0, 0, 0, // min frame size
 				0, 0, 0, // max frame size
-				0, 0, 0x14, 0x40, 0, 0, 0, 1, // rate 1, 2 channels, 4 bits/sample, 1 sample
+				0, 0, 0x14, 0x70, 0, 0, 0, 1, // rate 1, 2 channels, 8 bits/sample, 1 sample
 				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // MD5, obviously not the true value.
 
 				// Sync code · 0 reserved · fixed blocking
@@ -366,7 +366,7 @@ func TestReadFrameHeaderError(t *testing.T) {
 				0, 0, // max block size
 				0, 0, 0, // min frame size
 				0, 0, 0, // max frame size
-				0, 0, 0x14, 0x40, 0, 0, 0, 1, // rate 1, 2 channels, 4 bits/sample, 1 sample
+				0, 0, 0x14, 0x70, 0, 0, 0, 1, // rate 1, 2 channels, 8 bits/sample, 1 sample
 				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // MD5, obviously not the true value.
 
 				// Sync code · 0 reserved · fixed blocking
@@ -400,7 +400,7 @@ func TestReadFrameHeaderError(t *testing.T) {
 				0, 0, // max block size
 				0, 0, 0, // min frame size
 				0, 0, 0, // max frame size
-				0, 0, 0x14, 0x40, 0, 0, 0, 1, // rate 1, 2 channels, 4 bits/sample, 1 sample
+				0, 0, 0x14, 0x70, 0, 0, 0, 1, // rate 1, 2 channels, 8 bits/sample, 1 sample
 				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // MD5, obviously not the true value.
 
 				// Sync code · 0 reserved · fixed blocking
@@ -434,7 +434,7 @@ func TestReadFrameHeaderError(t *testing.T) {
 				0, 0, // max block size
 				0, 0, 0, // min frame size
 				0, 0, 0, // max frame size
-				0, 0, 0x14, 0x40, 0, 0, 0, 1, // rate 1, 2 channels, 4 bits/sample, 1 sample
+				0, 0, 0x14, 0x70, 0, 0, 0, 1, // rate 1, 2 channels, 8 bits/sample, 1 sample
 				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // MD5, obviously not the true value.
 
 				// Sync code · 0 reserved · fixed blocking
@@ -468,7 +468,7 @@ func TestReadFrameHeaderError(t *testing.T) {
 				0, 0, // max block size
 				0, 0, 0, // min frame size
 				0, 0, 0, // max frame size
-				0, 0, 0x14, 0x40, 0, 0, 0, 1, // rate 1, 2 channels, 4 bits/sample, 1 sample
+				0, 0, 0x14, 0x70, 0, 0, 0, 1, // rate 1, 2 channels, 8 bits/sample, 1 sample
 				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // MD5, obviously not the true value.
 
 				// Sync code · 0 reserved · fixed blocking
@@ -496,7 +496,7 @@ func TestReadFrameHeaderError(t *testing.T) {
 	for _, test := range tests {
 		d, err := NewDecoder(bytes.NewReader(test.data))
 		if err != nil {
-			panic("Unexpected error making a new decoder")
+			panic("Unexpected error making a new decoder: " + err.Error())
 		}
 		if _, err = readFrameHeader(d.r, d.StreamInfo); err.Error() != test.str {
 			t.Errorf("Expected %s, got %v", test.str, err)

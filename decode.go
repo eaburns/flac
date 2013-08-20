@@ -67,6 +67,11 @@ func NewDecoder(r io.Reader) (*Decoder, error) {
 	if d.StreamInfo == nil {
 		return nil, errors.New("Missing STREAMINFO header")
 	}
+
+	if d.BitsPerSample != 8 && d.BitsPerSample != 16 && d.BitsPerSample != 24 {
+		return nil, errors.New("Unsupported bits per sample (" + strconv.Itoa(d.BitsPerSample) + "), supported values are: 8, 16, and 24")
+	}
+
 	return d, nil
 }
 
@@ -222,18 +227,8 @@ func vorbisString(data []byte) (string, []byte) {
 	return string(data[:n]), data[n:]
 }
 
-// Next returns the audio data from the next frame for each channel.
-//
-// The following list gives the order in which the channel data is returned:
-// 	1 channel: mono
-// 	2 channels: left, right
-// 	3 channels: left, right, center
-// 	4 channels: front left, front right, back left, back right
-// 	5 channels: front left, front right, front center, back/surround left, back/surround right
-// 	6 channels: front left, front right, front center, LFE, back/surround left, back/surround right
-// 	7 channels: front left, front right, front center, LFE, back center, side left, side right
-// 	8 channels: front left, front right, front center, LFE, back left, back right, side left, side right
-func (d *Decoder) Next() ([][]int32, error) {
+// Next returns the audio data from the next frame.
+func (d *Decoder) Next() ([]byte, error) {
 	defer func() { d.n++ }()
 
 	raw := bytes.NewBuffer(nil)
@@ -309,8 +304,7 @@ func (d *Decoder) Next() ([][]int32, error) {
 	}
 
 	fixChannels(data, h.channelAssignment)
-
-	return data, nil
+	return interleave(data, d.BitsPerSample), nil
 }
 
 func fixChannels(data [][]int32, assign channelAssignment) {
@@ -333,6 +327,53 @@ func fixChannels(data [][]int32, assign channelAssignment) {
 			data[0][i] = (mid + side) / 2
 			data[1][i] = (mid - side) / 2
 		}
+	}
+}
+
+func interleave(chs [][]int32, bps int) []byte {
+	nSamples := len(chs[0])
+
+	switch bps {
+	case 8:
+		data := make([]byte, nSamples*len(chs))
+		var i int
+		for j := 0; j < nSamples; j++ {
+			for _, ch := range chs {
+				data[i] = byte(ch[j])
+				i++
+			}
+		}
+		return data
+
+	case 16:
+		data := make([]byte, 2*nSamples*len(chs))
+		var i int
+		for j := 0; j < nSamples; j++ {
+			for _, ch := range chs {
+				s := ch[j]
+				data[i] = byte(s & 0xFF)
+				data[i+1] = byte((s >> 8) & 0xFF)
+				i += 2
+			}
+		}
+		return data
+
+	case 24:
+		data := make([]byte, 3*nSamples*len(chs))
+		var i int
+		for j := 0; j < nSamples; j++ {
+			for _, ch := range chs {
+				s := ch[j]
+				data[i] = byte(s & 0xFF)
+				data[i+1] = byte((s >> 8) & 0xFF)
+				data[i+2] = byte((s >> 16) & 0xFF)
+				i += 3
+			}
+		}
+		return data
+
+	default:
+		panic("Unsupported bits per sample")
 	}
 }
 

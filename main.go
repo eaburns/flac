@@ -30,35 +30,22 @@ func main() {
 		fmt.Println(err.Error())
 	}
 
-	var data []int16
-	var raw []byte
+	var data []byte
 	for {
-		chs, err := d.Next()
+		d, err := d.Next()
 		if err == io.EOF {
 			break
 		} else if err != nil {
 			fmt.Println(err.Error())
 			break
 		}
-		if len(chs) != 2 {
-			panic("expected 2 channels")
-		}
-		for i, d0 := range chs[0] {
-			d1 := chs[1][i]
-			data = append(data, int16(d0), int16(d1))
-			raw = append(raw,
-				byte(int16(d0)&0xFF),
-				byte((int16(d0)>>8)&0xFF),
-				byte(int16(d1)&0xFF),
-				byte((int16(d1)>>8)&0xFF),
-			)
-		}
+		data = append(data, d...)
 	}
 
-	writeWAV(raw)
+	writeWAV(data)
 
 	h := md5.New()
-	h.Write(raw)
+	h.Write(data)
 
 	if !reflect.DeepEqual(h.Sum(nil), d.MD5[:]) {
 		fmt.Printf("Header MD5: %x\n", d.MD5)
