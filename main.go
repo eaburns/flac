@@ -16,15 +16,6 @@ import (
 )
 
 func main() {
-	f, err := os.Create("debug.log")
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-	buf := bufio.NewWriter(f)
-	defer buf.Flush()
-	flac.DebugWriter = buf
-
 	d, err := flac.NewDecoder(bufio.NewReader(os.Stdin))
 	if err != nil {
 		fmt.Println(err.Error())

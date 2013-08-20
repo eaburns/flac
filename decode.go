@@ -6,7 +6,6 @@ import (
 	"crypto/md5"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"strconv"
@@ -139,9 +138,6 @@ func readMetaData(r io.Reader) (MetaData, error) {
 
 		case vorbisCommentType:
 			meta.VorbisComment, err = readVorbisComment(header)
-
-		default:
-			debug("Skipping a header: %s\n", kind)
 		}
 
 		if err != nil {
@@ -240,12 +236,9 @@ func (d *Decoder) Next() ([]byte, error) {
 		return nil, errors.New("Failed to read the frame header: " + err.Error())
 	}
 
-	debug("frame %d\n\t%+v\n", d.n, h)
-
 	br := bit.NewReader(tee)
 	data := make([][]int32, h.channelAssignment.nChannels())
 	for ch := range data {
-		debug("\tsubframe: %d\n", ch)
 		bps := h.bitsPerSample(ch)
 
 		switch kind, order, err := readSubFrameHeader(br); {
@@ -253,7 +246,6 @@ func (d *Decoder) Next() ([]byte, error) {
 			return nil, err
 
 		case kind == subFrameConstant:
-			debug("\t\t%s\n", kind)
 			v, err := br.Read(bps)
 			if err != nil {
 				return nil, err
@@ -265,7 +257,6 @@ func (d *Decoder) Next() ([]byte, error) {
 			}
 
 		case kind == subFrameVerbatim:
-			debug("\t\t%s\n", kind)
 			data[ch] = make([]int32, h.blockSize)
 			for j := range data[ch] {
 				v, err := br.Read(bps)
@@ -276,22 +267,19 @@ func (d *Decoder) Next() ([]byte, error) {
 			}
 
 		case kind == subFrameFixed:
-			debug("\t\t%s, predictor order=%d\n", kind, order)
 			data[ch], err = decodeFixedSubFrame(br, bps, h.blockSize, order)
 			if err != nil {
 				return nil, err
 			}
 
 		case kind == subFrameLPC:
-			debug("\t\t%s, predictor order=%d\n", kind, order)
 			data[ch], err = decodeLPCSubFrame(br, bps, h.blockSize, order)
 			if err != nil {
 				return nil, err
 			}
 
 		default:
-			debug("\t\t%s, predictor order=%d\n", kind, order)
-			return nil, errors.New("Unimplemented")
+			panic("Unsupported frame kind")
 		}
 	}
 
@@ -517,14 +505,12 @@ func readFrameHeader(r io.Reader, info *StreamInfo) (*frameHeader, error) {
 	case 0:
 		return nil, errors.New("Bad block size in frame header")
 	case 6:
-		debug("\t8 bit block size\n")
 		sz, err := br.Read(8)
 		if err != nil {
 			return nil, err
 		}
 		h.blockSize = int(sz) + 1
 	case 7:
-		debug("\t16 bit block size\n")
 		sz, err := br.Read(16)
 		if err != nil {
 			return nil, err
@@ -538,21 +524,18 @@ func readFrameHeader(r io.Reader, info *StreamInfo) (*frameHeader, error) {
 	case 0:
 		h.sampleRate = info.SampleRate
 	case 12:
-		debug("\t8 bit sample rate\n")
 		r, err := br.Read(8)
 		if err != nil {
 			return nil, err
 		}
 		h.sampleRate = int(r)
 	case 13:
-		debug("\t16 bit sample rate\n")
 		r, err := br.Read(16)
 		if err != nil {
 			return nil, err
 		}
 		h.sampleRate = int(r)
 	case 14:
-		debug("\t16 bit sample rate * 10\n")
 		r, err := br.Read(16)
 		if err != nil {
 			return nil, err
@@ -600,7 +583,7 @@ func readSubFrameHeader(br *bit.Reader) (kind subFrameKind, order int, err error
 	case err != nil:
 		return 0, 0, err
 	case pad != 0:
-		debug("\t\tBad padding value\n")
+		// Do nothing, but this is a bad padding value.
 	}
 
 	switch k, err := br.Read(6); {
@@ -645,7 +628,6 @@ func readSubFrameHeader(br *bit.Reader) (kind subFrameKind, order int, err error
 			n++
 		}
 	}
-	debug("\t\t%d wasted bits\n", n)
 
 	return kind, order, nil
 }
@@ -661,9 +643,6 @@ func decodeFixedSubFrame(br *bit.Reader, sampleSize uint, blkSize int, predO int
 	warm, err := readInts(br, predO, sampleSize)
 	if err != nil {
 		return nil, err
-	}
-	for i, w := range warm {
-		debug("\t\twarm[%d]: %d\n", i, w)
 	}
 
 	residual, err := decodeResiduals(br, blkSize, predO)
@@ -683,9 +662,6 @@ func decodeLPCSubFrame(br *bit.Reader, sampleSize uint, blkSize int, predO int) 
 	if err != nil {
 		return nil, err
 	}
-	for i, w := range warm {
-		debug("\t\twarm[%d]: %d\n", i, w)
-	}
 
 	prec, err := br.Read(4)
 	if err != nil {
@@ -694,14 +670,12 @@ func decodeLPCSubFrame(br *bit.Reader, sampleSize uint, blkSize int, predO int) 
 		return nil, errors.New("Bad LPC predictor precision")
 	}
 	prec++
-	debug("\t\tprecision: %d\n", prec)
 
 	s, err := br.Read(5)
 	if err != nil {
 		return nil, err
 	}
 	shift := int(signExtend(s, 5))
-	debug("\t\tshift (quantization level): %d\n", shift)
 	if shift < 0 {
 		panic("What does a negative shift mean‽")
 	}
@@ -709,9 +683,6 @@ func decodeLPCSubFrame(br *bit.Reader, sampleSize uint, blkSize int, predO int) 
 	coeffs, err := readInts(br, predO, uint(prec))
 	if err != nil {
 		return nil, err
-	}
-	for i, c := range coeffs {
-		debug("\t\tcoeff[%d]: %d\n", i, c)
 	}
 
 	residual, err := decodeResiduals(br, blkSize, predO)
@@ -765,7 +736,6 @@ func decodeResiduals(br *bit.Reader, blkSize int, predO int) ([]int32, error) {
 	if err != nil {
 		return nil, err
 	}
-	debug("\t\tpartition order: %d\n", partO)
 
 	var residue []int32
 	for i := 0; i < 1<<partO; i++ {
@@ -775,7 +745,6 @@ func decodeResiduals(br *bit.Reader, blkSize int, predO int) ([]int32, error) {
 		} else if (bits == 4 && M == 0xF) || (bits == 5 && M == 0x1F) {
 			panic("Unsupported, unencoded residuals")
 		}
-		debug("\t\tparameter[%d]: %d\n", i, M)
 
 		n := 0
 		switch {
@@ -827,15 +796,4 @@ func riceDecode(br *bit.Reader, n int, M uint) ([]int32, error) {
 		ns[i] = int32(u>>1) ^ -int32(u&1)
 	}
 	return ns, nil
-}
-
-// DebugWriter is an io.Writer to which debug information is logged.
-// If DebugWriter is nil then nothing is logged.
-var DebugWriter io.Writer
-
-func debug(f string, vals ...interface{}) {
-	if DebugWriter == nil {
-		return
-	}
-	fmt.Fprintf(DebugWriter, f, vals...)
 }
