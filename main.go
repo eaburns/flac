@@ -10,30 +10,43 @@ import (
 	"os"
 
 	"github.com/eaburns/flac"
+
+//	"github.com/davecheney/profile"
 )
 
 func main() {
-	data, err := flac.Decode(bufio.NewReader(os.Stdin))
+	//	defer profile.Start(profile.CPUProfile).Stop()
+	data, meta, err := flac.Decode(bufio.NewReader(os.Stdin))
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-
-	writeWAV(data)
+	writeWAV(data, meta)
 }
 
-func writeWAV(data []byte) {
+type wavFmt struct {
+	format        int16
+	channels      int16
+	sampleRate    int32
+	dataRate      int32
+	dataBlockSize int16
+	bitsPerSample int16
+}
+
+const pcmFormat = 1
+
+func writeWAV(data []byte, meta flac.MetaData) {
 	wdata := bytes.NewBuffer(nil)
 	wdata.WriteString("WAVE")
 
 	wdata.WriteString("fmt ")
 	binary.Write(wdata, binary.LittleEndian, uint32(16))
-	wdata.Write([]byte{
-		0x01, 0x00, // PCM format
-		0x02, 0x00, // 2 interleaved channels
-		0x44, 0xAC, 0x00, 0x00, // sample rate: 44100 Hz
-		0x10, 0xb1, 0x02, 0x00, // data rate: 176400 = 44100*4 bytes/sec (4 = 2 channels, 2 bytes per channel)
-		0x04, 0x00, // data block size in bytes—whatever that means
-		0x10, 0x00, // bits per sample: 16
+	binary.Write(wdata, binary.LittleEndian, wavFmt{
+		format:        pcmFormat,
+		channels:      int16(meta.NChannels),
+		sampleRate:    int32(meta.SampleRate),
+		dataRate:      int32(meta.NChannels * meta.SampleRate * (meta.BitsPerSample / 8)),
+		dataBlockSize: int16(meta.NChannels * (meta.BitsPerSample / 8)),
+		bitsPerSample: int16(meta.BitsPerSample),
 	})
 	wdata.WriteString("data")
 	binary.Write(wdata, binary.LittleEndian, uint32(len(data)))
