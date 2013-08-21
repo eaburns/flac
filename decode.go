@@ -697,7 +697,7 @@ func decodeFixedSubFrame(br *bit.Reader, sampleSize uint, blkSize int, predO int
 		return residual, nil
 	}
 
-	return predict(fixedCoeffs[predO], warm, residual, 0), nil
+	return lpcDecode(fixedCoeffs[predO], warm, residual, 0), nil
 }
 
 func decodeLPCSubFrame(br *bit.Reader, sampleSize uint, blkSize int, predO int) ([]int32, error) {
@@ -733,7 +733,7 @@ func decodeLPCSubFrame(br *bit.Reader, sampleSize uint, blkSize int, predO int) 
 		return nil, err
 	}
 
-	return predict(coeffs, warm, residual, shift), nil
+	return lpcDecode(coeffs, warm, residual, uint(shift)), nil
 }
 
 func readInts(br *bit.Reader, n int, bits uint) ([]int32, error) {
@@ -748,14 +748,14 @@ func readInts(br *bit.Reader, n int, bits uint) ([]int32, error) {
 	return is, nil
 }
 
-func predict(coeffs, warm, residual []int32, shift int) []int32 {
+func lpcDecode(coeffs, warm, residual []int32, shift uint) []int32 {
 	data := make([]int32, len(warm)+len(residual))
 	copy(data, warm)
 	for i := len(warm); i < len(data); i++ {
 		var sum int32
 		for j, c := range coeffs {
 			sum += c * data[i-j-1]
-			data[i] = residual[i-len(warm)] + (sum >> uint(shift))
+			data[i] = residual[i-len(warm)] + (sum >> shift)
 		}
 	}
 	return data
