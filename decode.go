@@ -39,7 +39,7 @@ type StreamInfo struct {
 	SampleRate    int
 	NChannels     int
 	BitsPerSample int
-	TotalSamples  int
+	TotalSamples  int64
 	MD5           [md5.Size]byte
 }
 
@@ -179,7 +179,7 @@ func readStreamInfo(r io.Reader) (*StreamInfo, error) {
 		SampleRate:    int(fs[4]),
 		NChannels:     int(fs[5]) + 1,
 		BitsPerSample: int(fs[6]) + 1,
-		TotalSamples:  int(fs[7]),
+		TotalSamples:  int64(fs[7]),
 	}
 
 	csum, err := ioutil.ReadAll(r)
