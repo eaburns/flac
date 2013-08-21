@@ -15,7 +15,37 @@ import (
 
 var magic = [4]byte{'f', 'L', 'a', 'C'}
 
+// Decode reads a FLAC file, decodes it, verifies its MD5 checksum, and returns the data.
+func Decode(r io.Reader) ([]byte, error) {
+	d, err := NewDecoder(r)
+	if err != nil {
+		return nil, err
+	}
+
+	data := make([]byte, 0, d.TotalSamples*int64(d.NChannels)*int64(d.BitsPerSample/8))
+	for {
+		frame, err := d.Next()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return nil, err
+		}
+		data = append(data, frame...)
+	}
+
+	h := md5.New()
+	if _, err := h.Write(data); err != nil {
+		return nil, err
+	}
+	if !bytes.Equal(h.Sum(nil), d.MD5[:]) {
+		return nil, errors.New("Bad MD5 checksum")
+	}
+	return data, nil
+}
+
 // A Decoder decodes a FLAC audio file.
+// Unlike the Decode function, a decoder can decode the file incrementally,
+// one frame at a time.
 type Decoder struct {
 	r io.Reader
 	// N is the next frame number.

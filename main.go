@@ -5,44 +5,20 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"crypto/md5"
 	"encoding/binary"
 	"fmt"
-	"io"
 	"os"
-	"reflect"
 
 	"github.com/eaburns/flac"
 )
 
 func main() {
-	d, err := flac.NewDecoder(bufio.NewReader(os.Stdin))
+	data, err := flac.Decode(bufio.NewReader(os.Stdin))
 	if err != nil {
 		fmt.Println(err.Error())
 	}
 
-	var data []byte
-	for {
-		d, err := d.Next()
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			fmt.Println(err.Error())
-			break
-		}
-		data = append(data, d...)
-	}
-
 	writeWAV(data)
-
-	h := md5.New()
-	h.Write(data)
-
-	if !reflect.DeepEqual(h.Sum(nil), d.MD5[:]) {
-		fmt.Printf("Header MD5: %x\n", d.MD5)
-		fmt.Printf("MD5: %x\n", h.Sum(nil))
-		os.Exit(1)
-	}
 }
 
 func writeWAV(data []byte) {
