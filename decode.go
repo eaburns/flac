@@ -258,63 +258,27 @@ func (d *Decoder) Next() ([]byte, error) {
 	defer func() { d.n++ }()
 
 	raw := bytes.NewBuffer(nil)
-	tee := io.TeeReader(d.r, raw)
-	h, err := readFrameHeader(tee, d.StreamInfo)
+	frame := io.TeeReader(d.r, raw)
+	h, err := readFrameHeader(frame, d.StreamInfo)
 	if err == io.EOF {
 		return nil, err
 	} else if err != nil {
 		return nil, errors.New("Failed to read the frame header: " + err.Error())
 	}
 
-	br := bit.NewReader(tee)
+	br := bit.NewReader(frame)
 	data := make([][]int32, h.channelAssignment.nChannels())
 	for ch := range data {
-		bps := h.bitsPerSample(ch)
-
-		switch kind, order, err := readSubFrameHeader(br); {
-		case err != nil:
+		if data[ch], err = readSubFrame(br, h, ch); err != nil {
 			return nil, err
-
-		case kind == subFrameConstant:
-			v, err := br.Read(bps)
-			if err != nil {
-				return nil, err
-			}
-			u := signExtend(v, bps)
-			data[ch] = make([]int32, h.blockSize)
-			for j := range data[ch] {
-				data[ch][j] = u
-			}
-
-		case kind == subFrameVerbatim:
-			data[ch] = make([]int32, h.blockSize)
-			for j := range data[ch] {
-				v, err := br.Read(bps)
-				if err != nil {
-					return nil, err
-				}
-				data[ch][j] = signExtend(v, bps)
-			}
-
-		case kind == subFrameFixed:
-			data[ch], err = decodeFixedSubFrame(br, bps, h.blockSize, order)
-			if err != nil {
-				return nil, err
-			}
-
-		case kind == subFrameLPC:
-			data[ch], err = decodeLPCSubFrame(br, bps, h.blockSize, order)
-			if err != nil {
-				return nil, err
-			}
-
-		default:
-			panic("Unsupported frame kind")
 		}
 	}
 
+	// The bit.Reader buffers up to the next byte, so reading from frame occurs
+	// on the next byte boundary.  That takes care of the padding to align to the
+	// next byte.
 	var crc16 [2]byte
-	if _, err := io.ReadFull(tee, crc16[:]); err != nil {
+	if _, err := io.ReadFull(frame, crc16[:]); err != nil {
 		return nil, err
 	}
 	if err = verifyCRC16(raw.Bytes()); err != nil {
@@ -323,6 +287,55 @@ func (d *Decoder) Next() ([]byte, error) {
 
 	fixChannels(data, h.channelAssignment)
 	return interleave(data, d.BitsPerSample), nil
+}
+
+func readSubFrame(br *bit.Reader, h *frameHeader, ch int) ([]int32, error) {
+	var data []int32
+	bps := h.bitsPerSample(ch)
+
+	kind, order, err := readSubFrameHeader(br)
+	if err != nil {
+		return nil, err
+	}
+	switch kind {
+	case subFrameConstant:
+		v, err := br.Read(bps)
+		if err != nil {
+			return nil, err
+		}
+		u := signExtend(v, bps)
+		data = make([]int32, h.blockSize)
+		for j := range data {
+			data[j] = u
+		}
+
+	case subFrameVerbatim:
+		data = make([]int32, h.blockSize)
+		for j := range data {
+			v, err := br.Read(bps)
+			if err != nil {
+				return nil, err
+			}
+			data[j] = signExtend(v, bps)
+		}
+
+	case subFrameFixed:
+		data, err = decodeFixedSubFrame(br, bps, h.blockSize, order)
+		if err != nil {
+			return nil, err
+		}
+
+	case subFrameLPC:
+		data, err = decodeLPCSubFrame(br, bps, h.blockSize, order)
+		if err != nil {
+			return nil, err
+		}
+
+	default:
+		panic("Unsupported frame kind")
+	}
+
+	return data, nil
 }
 
 func fixChannels(data [][]int32, assign channelAssignment) {
