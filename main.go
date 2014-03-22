@@ -19,6 +19,7 @@ func main() {
 	data, meta, err := flac.Decode(bufio.NewReader(os.Stdin))
 	if err != nil {
 		fmt.Println(err.Error())
+		return
 	}
 	writeWAV(data, meta)
 }
