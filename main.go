@@ -1,3 +1,5 @@
+// © 2014 the flac Authors under the MIT license. See AUTHORS for the list of authors.
+
 // +build ignore
 
 package main
@@ -11,7 +13,7 @@ import (
 
 	"github.com/eaburns/flac"
 
-//	"github.com/davecheney/profile"
+	//	"github.com/davecheney/profile"
 )
 
 func main() {

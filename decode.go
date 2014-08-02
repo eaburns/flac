@@ -1,3 +1,5 @@
+// © 2014 the flac Authors under the MIT license. See AUTHORS for the list of authors.
+
 // Package flac implements a Free Lossless Audio Codec (FLAC) decoder.
 package flac
 
