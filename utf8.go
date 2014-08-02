@@ -1,3 +1,5 @@
+// © 2014 the flac Authors under the MIT license. See AUTHORS for the list of authors.
+
 package flac
 
 import (
