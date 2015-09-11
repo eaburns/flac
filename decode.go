@@ -303,7 +303,7 @@ func (d *Decoder) Next() ([]byte, error) {
 	}
 
 	fixChannels(data, h.channelAssignment)
-	return interleave(data, d.BitsPerSample), nil
+	return interleave(data, d.BitsPerSample)
 }
 
 func readSubFrame(br *bit.Reader, h *frameHeader, ch int) ([]int32, error) {
@@ -378,7 +378,7 @@ func fixChannels(data [][]int32, assign channelAssignment) {
 	}
 }
 
-func interleave(chs [][]int32, bps int) []byte {
+func interleave(chs [][]int32, bps int) ([]byte, error) {
 	nSamples := len(chs[0])
 
 	switch bps {
@@ -391,7 +391,7 @@ func interleave(chs [][]int32, bps int) []byte {
 				i++
 			}
 		}
-		return data
+		return data, nil
 
 	case 16:
 		data := make([]byte, 2*nSamples*len(chs))
@@ -404,7 +404,7 @@ func interleave(chs [][]int32, bps int) []byte {
 				i += 2
 			}
 		}
-		return data
+		return data, nil
 
 	case 24:
 		data := make([]byte, 3*nSamples*len(chs))
@@ -418,11 +418,10 @@ func interleave(chs [][]int32, bps int) []byte {
 				i += 3
 			}
 		}
-		return data
+		return data, nil
 
-	default:
-		panic("Unsupported bits per sample")
 	}
+	return nil, errors.New("Unsupported bits per sample")
 }
 
 type frameHeader struct {
