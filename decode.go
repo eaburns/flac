@@ -737,7 +737,7 @@ func decodeLPCSubFrame(br *bit.Reader, sampleSize uint, blkSize int, predO int) 
 	}
 	shift := int(signExtend(s, 5))
 	if shift < 0 {
-		panic("What does a negative shift mean‽")
+		return nil, errors.New("Invalid negative shift")
 	}
 
 	coeffs, err := readInts(br, predO, uint(prec))
