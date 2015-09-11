@@ -219,7 +219,7 @@ func readStreamInfo(r io.Reader) (*StreamInfo, error) {
 		return nil, err
 	}
 	if len(csum) != md5.Size {
-		panic("Bad MD5 checksum size")
+		return nil, errors.New("Bad MD5 checksum size")
 	}
 	copy(info.MD5[:], csum)
 
