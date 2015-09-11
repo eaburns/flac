@@ -349,7 +349,7 @@ func readSubFrame(br *bit.Reader, h *frameHeader, ch int) ([]int32, error) {
 		}
 
 	default:
-		panic("Unsupported frame kind")
+		return nil, errors.New("Unsupported frame kind")
 	}
 
 	return data, nil
