@@ -803,7 +803,7 @@ func decodeResiduals(br *bit.Reader, blkSize int, predO int) ([]int32, error) {
 		if err != nil {
 			return nil, err
 		} else if (bits == 4 && M == 0xF) || (bits == 5 && M == 0x1F) {
-			panic("Unsupported, unencoded residuals")
+			return nil, errors.New("Unsupported, unencoded residuals")
 		}
 
 		n := 0
