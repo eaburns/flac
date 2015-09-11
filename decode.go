@@ -670,7 +670,7 @@ func readSubFrameHeader(br *bit.Reader) (kind subFrameKind, order int, err error
 		kind = subFrameLPC
 
 	default:
-		panic("Impossible!")
+		return 0, 0, errors.New("Invalid subframe type")
 	}
 
 	n := 0
