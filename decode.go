@@ -236,23 +236,38 @@ func readVorbisComment(r io.Reader) (*VorbisComment, error) {
 		return nil, err
 	}
 	cmnt := new(VorbisComment)
-	cmnt.Vendor, data = vorbisString(data)
+	cmnt.Vendor, data, err = vorbisString(data)
+	if err != nil {
+		return nil, err
+	}
 
+	if len(data) < 4 {
+		return nil, errors.New("invalid vorbis comments header")
+	}
 	n := binary.LittleEndian.Uint32(data)
 	data = data[4:]
 
 	for i := uint32(0); i < n; i++ {
 		var s string
-		s, data = vorbisString(data)
+		s, data, err = vorbisString(data)
+		if err != nil {
+			return nil, err
+		}
 		cmnt.Comments = append(cmnt.Comments, s)
 	}
 	return cmnt, nil
 }
 
-func vorbisString(data []byte) (string, []byte) {
+func vorbisString(data []byte) (string, []byte, error) {
+	if len(data) < 4 {
+		return "", nil, errors.New("invalid vorbis string header")
+	}
 	n := binary.LittleEndian.Uint32(data)
 	data = data[4:]
-	return string(data[:n]), data[n:]
+	if uint64(n) > uint64(len(data)) {
+		return "", nil, errors.New("vorbis string length exceeds buffer size")
+	}
+	return string(data[:n]), data[n:], nil
 }
 
 // Next returns the audio data from the next frame.
