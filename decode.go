@@ -219,7 +219,7 @@ func readStreamInfo(r io.Reader) (*StreamInfo, error) {
 		return nil, err
 	}
 	if len(csum) != md5.Size {
-		panic("Bad MD5 checksum size")
+		return nil, errors.New("Bad MD5 checksum size")
 	}
 	copy(info.MD5[:], csum)
 
@@ -236,23 +236,38 @@ func readVorbisComment(r io.Reader) (*VorbisComment, error) {
 		return nil, err
 	}
 	cmnt := new(VorbisComment)
-	cmnt.Vendor, data = vorbisString(data)
+	cmnt.Vendor, data, err = vorbisString(data)
+	if err != nil {
+		return nil, err
+	}
 
+	if len(data) < 4 {
+		return nil, errors.New("invalid vorbis comments header")
+	}
 	n := binary.LittleEndian.Uint32(data)
 	data = data[4:]
 
 	for i := uint32(0); i < n; i++ {
 		var s string
-		s, data = vorbisString(data)
+		s, data, err = vorbisString(data)
+		if err != nil {
+			return nil, err
+		}
 		cmnt.Comments = append(cmnt.Comments, s)
 	}
 	return cmnt, nil
 }
 
-func vorbisString(data []byte) (string, []byte) {
+func vorbisString(data []byte) (string, []byte, error) {
+	if len(data) < 4 {
+		return "", nil, errors.New("invalid vorbis string header")
+	}
 	n := binary.LittleEndian.Uint32(data)
 	data = data[4:]
-	return string(data[:n]), data[n:]
+	if uint64(n) > uint64(len(data)) {
+		return "", nil, errors.New("vorbis string length exceeds buffer size")
+	}
+	return string(data[:n]), data[n:], nil
 }
 
 // Next returns the audio data from the next frame.
@@ -288,7 +303,7 @@ func (d *Decoder) Next() ([]byte, error) {
 	}
 
 	fixChannels(data, h.channelAssignment)
-	return interleave(data, d.BitsPerSample), nil
+	return interleave(data, d.BitsPerSample)
 }
 
 func readSubFrame(br *bit.Reader, h *frameHeader, ch int) ([]int32, error) {
@@ -334,7 +349,7 @@ func readSubFrame(br *bit.Reader, h *frameHeader, ch int) ([]int32, error) {
 		}
 
 	default:
-		panic("Unsupported frame kind")
+		return nil, errors.New("Unsupported frame kind")
 	}
 
 	return data, nil
@@ -363,7 +378,7 @@ func fixChannels(data [][]int32, assign channelAssignment) {
 	}
 }
 
-func interleave(chs [][]int32, bps int) []byte {
+func interleave(chs [][]int32, bps int) ([]byte, error) {
 	nSamples := len(chs[0])
 
 	switch bps {
@@ -376,7 +391,7 @@ func interleave(chs [][]int32, bps int) []byte {
 				i++
 			}
 		}
-		return data
+		return data, nil
 
 	case 16:
 		data := make([]byte, 2*nSamples*len(chs))
@@ -389,7 +404,7 @@ func interleave(chs [][]int32, bps int) []byte {
 				i += 2
 			}
 		}
-		return data
+		return data, nil
 
 	case 24:
 		data := make([]byte, 3*nSamples*len(chs))
@@ -403,11 +418,10 @@ func interleave(chs [][]int32, bps int) []byte {
 				i += 3
 			}
 		}
-		return data
+		return data, nil
 
-	default:
-		panic("Unsupported bits per sample")
 	}
+	return nil, errors.New("Unsupported bits per sample")
 }
 
 type frameHeader struct {
@@ -655,7 +669,7 @@ func readSubFrameHeader(br *bit.Reader) (kind subFrameKind, order int, err error
 		kind = subFrameLPC
 
 	default:
-		panic("Impossible!")
+		return 0, 0, errors.New("Invalid subframe type")
 	}
 
 	n := 0
@@ -722,7 +736,7 @@ func decodeLPCSubFrame(br *bit.Reader, sampleSize uint, blkSize int, predO int) 
 	}
 	shift := int(signExtend(s, 5))
 	if shift < 0 {
-		panic("What does a negative shift mean‽")
+		return nil, errors.New("Invalid negative shift")
 	}
 
 	coeffs, err := readInts(br, predO, uint(prec))
@@ -788,7 +802,7 @@ func decodeResiduals(br *bit.Reader, blkSize int, predO int) ([]int32, error) {
 		if err != nil {
 			return nil, err
 		} else if (bits == 4 && M == 0xF) || (bits == 5 && M == 0x1F) {
-			panic("Unsupported, unencoded residuals")
+			return nil, errors.New("Unsupported, unencoded residuals")
 		}
 
 		n := 0
