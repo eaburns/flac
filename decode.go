@@ -163,7 +163,7 @@ func readMetaData(r io.Reader) (MetaData, error) {
 
 		switch kind {
 		case invalidBlockType:
-			return meta, errors.New("Invalid metedata block type (127)")
+			return meta, errors.New("Invalid metadata block type (127)")
 
 		case streamInfoType:
 			meta.StreamInfo, err = readStreamInfo(header)
