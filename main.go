@@ -12,11 +12,9 @@ import (
 	"os"
 
 	"github.com/eaburns/flac"
-	//	"github.com/davecheney/profile"
 )
 
 func main() {
-	//	defer profile.Start(profile.CPUProfile).Stop()
 	data, meta, err := flac.Decode(bufio.NewReader(os.Stdin))
 	if err != nil {
 		fmt.Println(err.Error())
