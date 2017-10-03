@@ -59,7 +59,7 @@ func TestNewDecoderError(t *testing.T) {
 				'f', 'L', 'a', 'C',
 				0x7F, 0x00, 0x00, 0x00, 0x01, // Bad block type
 			},
-			"Invalid metedata block type (127)",
+			"Invalid metadata block type (127)",
 		},
 
 		{
